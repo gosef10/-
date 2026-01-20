@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>بث كاميرا الطفل</title>
+</head>
+<body>
+
+<h2>بث كاميرا الطفل</h2>
+
+<p>🔗 رابط الطفل:</p>
+<input id="link" style="width:100%" readonly>
+
+<br><br>
+<video id="video" autoplay playsinline style="width:100%;max-width:400px;border:1px solid #000"></video>
+<br><br>
+
+<button onclick="takeShot()">📸 التقاط صورة</button>
+<button onclick="startRecord()">⏺ تسجيل</button>
+<button onclick="stopRecord()">⏹ إيقاف التسجيل</button>
+<button onclick="switchCam()">🔁 تبديل الكاميرا</button>
+<button onclick="micOn()">🎤 تشغيل المايك</button>
+<button onclick="micOff()">🔇 كتم المايك</button>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+const room = Math.random().toString(36).substring(2,8);
+document.getElementById("link").value =
+  location.origin + location.pathname.replace("parent","child") + "?room=" + room;
+
+const peer = new Peer("parent-"+room, {
+  host:"peerjs.com",
+  secure:true,
+  port:443
+});
+
+let remoteStream, recorder, chunks=[], dataConn;
+
+peer.on("open", () => {
+  const call = peer.call("child-"+room, null);
+  call.on("stream", stream => {
+    remoteStream = stream;
+    document.getElementById("video").srcObject = stream;
+  });
+
+  dataConn = peer.connect("child-"+room);
+});
+
+// الصور
+function takeShot(){
+  const v = document.getElementById("video");
+  const c = document.createElement("canvas");
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v,0,0);
+  const a = document.createElement("a");
+  a.href = c.toDataURL("image/png");
+  a.download = "photo.png";
+  a.click();
+}
+
+// التسجيل
+function startRecord(){
+  recorder = new MediaRecorder(remoteStream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    const blob = new Blob(chunks,{type:"video/webm"});
+    chunks=[];
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="video.webm";
+    a.click();
+  };
+  recorder.start();
+}
+
+function stopRecord(){
+  recorder && recorder.stop();
+}
+
+// تبديل الكاميرا
+function switchCam(){
+  if(dataConn && dataConn.open) dataConn.send({cmd:"switchCamera"});
+}
+
+// التحكم بالمايك
+function micOn(){ if(dataConn && dataConn.open) dataConn.send({cmd:"mic", value:true}); }
+function micOff(){ if(dataConn && dataConn.open) dataConn.send({cmd:"mic", value:false}); }
+
+</script>
+
+</body>
+</html>
