@@ -26,7 +26,7 @@
 <script>
 const room = Math.random().toString(36).substring(2,8);
 document.getElementById("link").value =
-  location.origin + location.pathname.replace("parent","child") + "?room=" + room;
+  location.origin + location.pathname.replace("parent","index") + "?room=" + room;
 
 const peer = new Peer("parent-"+room, {
   host:"peerjs.com",
