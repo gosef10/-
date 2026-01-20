@@ -2,27 +2,30 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>الأب - مشاهدة </title>
+<title>المشاهدة</title>
 </head>
 <body>
 
-<h2>الأب: بث كاميرا </h2>
+<h2>البث المباشر</h2>
 
-<video id="video" autoplay playsinline muted style="width:100%;max-width:400px;border:1px solid #000"></video>
+<video id="video" autoplay playsinline muted
+style="width:100%;max-width:400px;border:1px solid black"></video>
 
 <br><br>
-<button onclick="takeShot()">📸 التقاط صورة</button>
+
+<button onclick="takeShot()">📸 صورة</button>
 <button onclick="startRecord()">⏺ تسجيل</button>
-<button onclick="stopRecord()">⏹ إيقاف التسجيل</button>
-<button onclick="switchCam()">🔁 تبديل الكاميرا</button>
+<button onclick="stopRecord()">⏹ إيقاف</button>
 <button onclick="micOn()">🎤 تشغيل المايك</button>
 <button onclick="micOff()">🔇 كتم المايك</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-let peer, remoteStream, recorder, chunks = [], dataConn;
+let peer;
+let remoteStream;
+let recorder;
+let chunks = [];
 
-// PeerJS الأب
 peer = new Peer("parent", {
   host: "peerjs.com",
   secure: true,
@@ -30,60 +33,66 @@ peer = new Peer("parent", {
 });
 
 peer.on("open", () => {
-  // الاتصال بالطفل
-  dataConn = peer.connect("child");
-
-  function callChild(retries = 5, delay = 2000){
-    if(retries <= 0){
-      alert("فشل الاتصال بالطفل بعد عدة محاولات.");
-      return;
-    }
-    const call = peer.call("child", undefined);
-    call.on("stream", stream => {
-      remoteStream = stream;
-      document.getElementById("video").srcObject = stream;
-    });
-    call.on("error", () => setTimeout(()=>callChild(retries-1, delay), delay));
-    call.on("close", () => setTimeout(()=>callChild(retries-1, delay), delay));
-  }
-
-  callChild();
+  connect();
 });
 
-// التقاط الصور
-function takeShot(){
+function connect() {
+  const call = peer.call("child", null);
+
+  call.on("stream", stream => {
+    remoteStream = stream;
+    document.getElementById("video").srcObject = stream;
+  });
+
+  call.on("error", retry);
+  call.on("close", retry);
+}
+
+function retry() {
+  setTimeout(connect, 2000);
+}
+
+/* 📸 صورة */
+function takeShot() {
   const v = document.getElementById("video");
   const c = document.createElement("canvas");
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext("2d").drawImage(v,0,0);
+  c.width = v.videoWidth;
+  c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
   const a = document.createElement("a");
   a.href = c.toDataURL("image/png");
   a.download = "photo.png";
   a.click();
 }
 
-// التسجيل
-function startRecord(){
+/* 🎥 تسجيل */
+function startRecord() {
   recorder = new MediaRecorder(remoteStream);
   recorder.ondataavailable = e => chunks.push(e.data);
   recorder.onstop = () => {
-    const blob = new Blob(chunks,{type:"video/webm"});
+    const blob = new Blob(chunks, { type: "video/webm" });
     chunks = [];
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "video.webm";
+    a.download = "record.webm";
     a.click();
   };
   recorder.start();
 }
 
-function stopRecord(){ recorder && recorder.stop(); }
+function stopRecord() {
+  if (recorder) recorder.stop();
+}
 
-// التحكم بالكاميرا والمايك
-function switchCam(){ if(dataConn && dataConn.open) dataConn.send({cmd:"switchCamera"}); }
-function micOn(){ if(dataConn && dataConn.open) dataConn.send({cmd:"mic", value:true}); }
-function micOff(){ if(dataConn && dataConn.open) dataConn.send({cmd:"mic", value:false}); }
+/* 🎤 مايك */
+function micOn() {
+  remoteStream.getAudioTracks().forEach(t => t.enabled = true);
+}
 
+function micOff() {
+  remoteStream.getAudioTracks().forEach(t => t.enabled = false);
+}
 </script>
+
 </body>
 </html>
