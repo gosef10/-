@@ -22,6 +22,9 @@ function startCamera(){
     audio:true
   }).then(s=>{
     stream = s;
+
+    document.getElementById("content").srcObject = stream;
+    
     peer.on("call", call => call.answer(stream));
   }).catch(()=>alert("لم يتم السماح للكاميرا"));
 }
