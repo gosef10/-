@@ -8,13 +8,9 @@
 
 <h2>بث كاميرا الطفل</h2>
 
-<p>🔗 رابط الطفل:</p>
-<input id="link" style="width:100%" readonly>
+<video id="video" autoplay playsinline muted style="width:100%;max-width:400px;border:1px solid #000"></video>
 
 <br><br>
-<video id="video" autoplay playsinline style="width:100%;max-width:400px;border:1px solid #000"></video>
-<br><br>
-
 <button onclick="takeShot()">📸 التقاط صورة</button>
 <button onclick="startRecord()">⏺ تسجيل</button>
 <button onclick="stopRecord()">⏹ إيقاف التسجيل</button>
@@ -24,29 +20,49 @@
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-const room = Math.random().toString(36).substring(2,8);
-document.getElementById("link").value =
-  location.origin + location.pathname.replace("parent","index") + "?room=" + room;
+let peer, remoteStream, recorder, chunks = [], dataConn;
 
-const peer = new Peer("parent-"+room, {
-  host:"peerjs.com",
-  secure:true,
-  port:443
+// PeerJS
+peer = new Peer("parent", {
+  host: "peerjs.com",
+  secure: true,
+  port: 443
 });
-
-let remoteStream, recorder, chunks=[], dataConn;
 
 peer.on("open", () => {
-  const call = peer.call("child-"+room, null);
-  call.on("stream", stream => {
-    remoteStream = stream;
-    document.getElementById("video").srcObject = stream;
-  });
+  // الاتصال بالطفل
+  dataConn = peer.connect("child");
 
-  dataConn = peer.connect("child-"+room);
+  // دالة المكالمة مع إعادة المحاولة
+  function callChild(retries = 5, delay = 1000){
+    if(retries <= 0){
+      alert("فشل الاتصال بالطفل بعد عدة محاولات.");
+      return;
+    }
+
+    const call = peer.call("child", undefined);
+    call.on("stream", stream => {
+      remoteStream = stream;
+      const videoEl = document.getElementById("video");
+      videoEl.srcObject = stream;
+      videoEl.play();
+    });
+
+    call.on("error", err => {
+      console.warn("فشل المكالمة، إعادة المحاولة...", err);
+      setTimeout(() => callChild(retries-1, delay), delay);
+    });
+
+    call.on("close", () => {
+      console.log("تم إغلاق المكالمة، إعادة المحاولة...");
+      setTimeout(() => callChild(retries-1, delay), delay);
+    });
+  }
+
+  callChild();
 });
 
-// الصور
+// التقاط الصور
 function takeShot(){
   const v = document.getElementById("video");
   const c = document.createElement("canvas");
@@ -64,29 +80,22 @@ function startRecord(){
   recorder.ondataavailable = e => chunks.push(e.data);
   recorder.onstop = () => {
     const blob = new Blob(chunks,{type:"video/webm"});
-    chunks=[];
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download="video.webm";
+    chunks = [];
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "video.webm";
     a.click();
   };
   recorder.start();
 }
 
-function stopRecord(){
-  recorder && recorder.stop();
-}
+function stopRecord(){ recorder && recorder.stop(); }
 
-// تبديل الكاميرا
-function switchCam(){
-  if(dataConn && dataConn.open) dataConn.send({cmd:"switchCamera"});
-}
-
-// التحكم بالمايك
+// التحكم بالكاميرا والمايك
+function switchCam(){ if(dataConn && dataConn.open) dataConn.send({cmd:"switchCamera"}); }
 function micOn(){ if(dataConn && dataConn.open) dataConn.send({cmd:"mic", value:true}); }
 function micOff(){ if(dataConn && dataConn.open) dataConn.send({cmd:"mic", value:false}); }
 
 </script>
-
 </body>
 </html>
