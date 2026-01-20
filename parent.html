@@ -2,11 +2,11 @@
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
-<title>بث كاميرا الطفل</title>
+<title>الأب - مشاهدة </title>
 </head>
 <body>
 
-<h2>بث كاميرا الطفل</h2>
+<h2>الأب: بث كاميرا </h2>
 
 <video id="video" autoplay playsinline muted style="width:100%;max-width:400px;border:1px solid #000"></video>
 
@@ -22,7 +22,7 @@
 <script>
 let peer, remoteStream, recorder, chunks = [], dataConn;
 
-// PeerJS
+// PeerJS الأب
 peer = new Peer("parent", {
   host: "peerjs.com",
   secure: true,
@@ -33,30 +33,18 @@ peer.on("open", () => {
   // الاتصال بالطفل
   dataConn = peer.connect("child");
 
-  // دالة المكالمة مع إعادة المحاولة
-  function callChild(retries = 5, delay = 1000){
+  function callChild(retries = 5, delay = 2000){
     if(retries <= 0){
       alert("فشل الاتصال بالطفل بعد عدة محاولات.");
       return;
     }
-
     const call = peer.call("child", undefined);
     call.on("stream", stream => {
       remoteStream = stream;
-      const videoEl = document.getElementById("video");
-      videoEl.srcObject = stream;
-      videoEl.play();
+      document.getElementById("video").srcObject = stream;
     });
-
-    call.on("error", err => {
-      console.warn("فشل المكالمة، إعادة المحاولة...", err);
-      setTimeout(() => callChild(retries-1, delay), delay);
-    });
-
-    call.on("close", () => {
-      console.log("تم إغلاق المكالمة، إعادة المحاولة...");
-      setTimeout(() => callChild(retries-1, delay), delay);
-    });
+    call.on("error", () => setTimeout(()=>callChild(retries-1, delay), delay));
+    call.on("close", () => setTimeout(()=>callChild(retries-1, delay), delay));
   }
 
   callChild();
