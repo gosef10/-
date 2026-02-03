@@ -32,31 +32,31 @@ peer = new Peer("parent", {
   port: 443
 });
 
-peer.on("open", () => {
-  connect();
-});
-
-function connect() {
-  // لا نرسل أي صوت أو فيديو من الأب
-  const call = peer.call("child", null);
+/* الأب يستقبل المكالمات من الطفل */
+peer.on("call", call => {
+  // لا نرسل أي شيء عند الإجابة
+  call.answer(null);
 
   call.on("stream", stream => {
     remoteStream = stream;
     document.getElementById("video").srcObject = stream;
   });
 
-  call.on("error", retry);
-  call.on("close", retry);
-}
+  call.on("close", () => {
+    console.log("تم إغلاق البث");
+    remoteStream = null;
+    document.getElementById("video").srcObject = null;
+  });
 
-function retry() {
-  setTimeout(connect, 2000);
-}
+  call.on("error", err => {
+    console.log("خطأ في البث:", err);
+  });
+});
 
 /* 📸 صورة */
 function takeShot() {
   const v = document.getElementById("video");
-  if (v.videoWidth === 0) return alert("الفيديو غير جاهز");
+  if (!v.videoWidth) return alert("الفيديو غير جاهز");
   const c = document.createElement("canvas");
   c.width = v.videoWidth;
   c.height = v.videoHeight;
