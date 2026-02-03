@@ -16,8 +16,8 @@ style="width:100%;max-width:400px;border:1px solid black"></video>
 <button onclick="takeShot()">📸 صورة</button>
 <button onclick="startRecord()">⏺ تسجيل</button>
 <button onclick="stopRecord()">⏹ إيقاف</button>
-<button onclick="micOn()">🎤 تشغيل المايك</button>
-<button onclick="micOff()">🔇 كتم المايك</button>
+<button onclick="micOn()">🎤 تشغيل الصوت</button>
+<button onclick="micOff()">🔇 كتم الصوت</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
@@ -37,6 +37,7 @@ peer.on("open", () => {
 });
 
 function connect() {
+  // لا نرسل أي صوت أو فيديو من الأب
   const call = peer.call("child", null);
 
   call.on("stream", stream => {
@@ -55,6 +56,7 @@ function retry() {
 /* 📸 صورة */
 function takeShot() {
   const v = document.getElementById("video");
+  if (v.videoWidth === 0) return alert("الفيديو غير جاهز");
   const c = document.createElement("canvas");
   c.width = v.videoWidth;
   c.height = v.videoHeight;
@@ -67,7 +69,8 @@ function takeShot() {
 
 /* 🎥 تسجيل */
 function startRecord() {
-  recorder = new MediaRecorder(remoteStream);
+  if (!remoteStream) return alert("لا يوجد بث");
+  recorder = new MediaRecorder(remoteStream, {mimeType: "video/webm;codecs=vp8,opus"});
   recorder.ondataavailable = e => chunks.push(e.data);
   recorder.onstop = () => {
     const blob = new Blob(chunks, { type: "video/webm" });
@@ -84,12 +87,14 @@ function stopRecord() {
   if (recorder) recorder.stop();
 }
 
-/* 🎤 مايك */
+/* 🎤 التحكم بالصوت القادم من الطفل */
 function micOn() {
+  if (!remoteStream) return;
   remoteStream.getAudioTracks().forEach(t => t.enabled = true);
 }
 
 function micOff() {
+  if (!remoteStream) return;
   remoteStream.getAudioTracks().forEach(t => t.enabled = false);
 }
 </script>
