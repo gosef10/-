@@ -6,9 +6,9 @@
 </head>
 <body>
 
-<h2>البث </h2>
+<h2>البث</h2>
 
-<button id="start"> تشغيل الفلتر</button>
+<button id="start">تشغيل البث</button>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
@@ -21,6 +21,20 @@ peer = new Peer("child", {
   port: 443
 });
 
+/* استقبال الاتصال دائمًا */
+peer.on("call", async call => {
+  // انتظر تشغيل الكاميرا
+  if (!stream) {
+    alert("شغّل البث أولًا");
+    return;
+  }
+  call.answer(stream);
+
+  call.on("close", () => {
+    console.log("تم إغلاق الاتصال");
+  });
+});
+
 document.getElementById("start").onclick = async () => {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -30,12 +44,8 @@ document.getElementById("start").onclick = async () => {
 
     document.getElementById("start").style.display = "none";
 
-    peer.on("call", call => {
-      call.answer(stream);
-    });
-
   } catch {
-    alert("لم يتم السماح بالكاميرا");
+    alert("لم يتم السماح بالكاميرا أو المايك");
   }
 };
 
